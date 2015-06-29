@@ -18,13 +18,16 @@ func init() {
 }
 
 func (m qldMatcher) Search(feed *Feed) ([]*Result, error) {
+	// TODO: redail if GET got timeout
 	doc, err := goquery.NewDocument(feed.Link)
+	log.Println("feed " + feed.State)
 
 	var breeds []*Breed
 	var results []*Result
 
 	if err != nil {
 		log.Fatal(err)
+		return nil, err
 	}
 
 	//Find breeds on this page
@@ -43,28 +46,27 @@ func (m qldMatcher) Search(feed *Feed) ([]*Result, error) {
 
 	})
 
-	breeders, errBreeder := RetrieveBreeder(breeds)
+	fixedbreeds, errBreeder := RetrieveBreeder(breeds)
 
 	if errBreeder != nil {
 		return nil, errBreeder
 	}
 
 	results = append(results, &Result{
-		State:   "QLD",
-		Breeder: breeders,
+		State: "QLD",
+		Breed: fixedbreeds,
 	})
 
 	return results, nil
 
 }
 
-func RetrieveBreeder(breeds []*Breed) ([]*Breeder, error) {
+func RetrieveBreeder(breeds []*Breed) ([]*Breed, error) {
 
 	log.Printf("How many Breed in QLD %d", len(breeds))
 
-	var breeders []*Breeder
-
 	for _, breed := range breeds {
+		var breeders []*Breeder
 		//Use GoRountine to run this process cocurrently
 		// FIXME: use GORoutine to run goquery (maybe quicker)
 		doc, err := goquery.NewDocument(uri + breed.Link)
@@ -89,12 +91,13 @@ func RetrieveBreeder(breeds []*Breed) ([]*Breeder, error) {
 				Email: filteredEmail[0],
 			})
 
+			breed.Breeder = breeders
+
 		})
 
 	}
 
 	log.Println("breeders count ")
-	log.Println(len(breeders))
 
-	return breeders, nil
+	return breeds, nil
 }

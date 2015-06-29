@@ -21,13 +21,14 @@ type Breeder struct {
 }
 
 type Breed struct {
-	Name string //dog breed
-	Link string
+	Name    string //dog breed
+	Link    string
+	Breeder []*Breeder
 }
 
 type Result struct {
-	State   string
-	Breeder []*Breeder
+	State string
+	Breed []*Breed
 }
 
 // TODO: Search function for matcher interface should return Result not []Result
@@ -93,9 +94,11 @@ func Run() {
 }
 
 func Display(results chan *Result) {
+	log.Println("......................!!")
+	log.Println(len(results))
 	for result := range results {
-		if result.Breeder != nil {
-			ProcessBreeder(result.Breeder)
+		if result.Breed != nil {
+			ProcessBreeder(result.Breed)
 		}
 	}
 }
