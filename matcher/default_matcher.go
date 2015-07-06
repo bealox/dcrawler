@@ -9,6 +9,6 @@ func init() {
 	Register("default", matcher)
 }
 
-func (m defaultMatcher) Search(feed *Feed) ([]*Result, error) {
+func (m defaultMatcher) Search(feed *Feed) (*Result, error) {
 	return nil, nil
 }

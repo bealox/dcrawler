@@ -12,9 +12,9 @@ func init() {
 
 type nswMatcher struct{}
 
-func (m nswMatcher) Search(feed *Feed) ([]*Result, error) {
+func (m nswMatcher) Search(feed *Feed) (*Result, error) {
 
-	var results []*Result
+	// var results *Result
 
 	resp, err := http.Get(feed.Link)
 	if err != nil {
@@ -27,9 +27,9 @@ func (m nswMatcher) Search(feed *Feed) ([]*Result, error) {
 		return nil, err
 	}
 
-	results = append(results, &Result{
-		State: "NSW",
-	})
+	// results = append(results, &Result{
+	// 	State: "NSW",
+	// })
 
-	return results, nil
+	return nil, nil
 }

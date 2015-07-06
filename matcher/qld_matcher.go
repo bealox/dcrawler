@@ -4,6 +4,7 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"log"
 	"strings"
+	"sync"
 )
 
 type qldMatcher struct{}
@@ -17,13 +18,12 @@ func init() {
 	Register("QLD", matcher)
 }
 
-func (m qldMatcher) Search(feed *Feed) ([]*Result, error) {
+func (m qldMatcher) Search(feed *Feed) (*Result, error) {
 	// TODO: redail if GET got timeout
 	doc, err := goquery.NewDocument(feed.Link)
-	log.Println("feed " + feed.State)
 
 	var breeds []*Breed
-	var results []*Result
+	var results *Result
 
 	if err != nil {
 		log.Fatal(err)
@@ -52,18 +52,68 @@ func (m qldMatcher) Search(feed *Feed) ([]*Result, error) {
 		return nil, errBreeder
 	}
 
-	results = append(results, &Result{
+	// results = append(results, &Result{
+	// 	State: "QLD",
+	// 	Breed: fixedbreeds,
+	// })
+
+	results = &Result{
 		State: "QLD",
 		Breed: fixedbreeds,
-	})
+	}
 
 	return results, nil
 
 }
 
-func RetrieveBreeder(breeds []*Breed) ([]*Breed, error) {
+/*
+	This is a method without using goroutine
+	It's 10 sec slower compares to the method that uses goroutine
+*/
 
-	log.Printf("How many Breed in QLD %d", len(breeds))
+// func RetrieveBreeder(breeds []*Breed) ([]*Breed, error) {
+
+// 	log.Printf("How many Breed in QLD %d", len(breeds))
+
+// 	for _, breed := range breeds {
+// 		var breeders []*Breeder
+// 		doc, err := goquery.NewDocument(uri + breed.Link)
+
+// 		if err != nil {
+// 			return nil, err
+// 		}
+
+// 		doc.Find(".col-xs-8").Each(func(i int, s *goquery.Selection) {
+// 			id := strings.TrimSpace(s.Find("h3").Text())
+
+// 			// TODO: maybe store webstie address in the database
+// 			// QLD council put email and website under the same div
+// 			// splitting out new line character, you can also get the website address via
+// 			// fitleredEmail[2]
+// 			email := strings.TrimSpace(s.Find(".email-content").Text())
+// 			filteredEmail := strings.SplitN(email, "\n", -1)
+
+// 			breeders = append(breeders, &Breeder{
+// 				Breed: breed.Name,
+// 				ID:    id,
+// 				Email: filteredEmail[0],
+// 			})
+
+// 			breed.Breeder = breeders
+
+// 		})
+
+// 	}
+
+// 	return breeds, nil
+// }
+
+func RetrieveBreeder(breeds []*Breed) ([]*Breed, error) {
+	log.SetPrefix("INFO ")
+	log.Printf("How many BREED in QLD %d \n", len(breeds))
+	var wg sync.WaitGroup
+
+	wg.Add(len(breeds))
 
 	for _, breed := range breeds {
 		var breeders []*Breeder
@@ -74,30 +124,33 @@ func RetrieveBreeder(breeds []*Breed) ([]*Breed, error) {
 		if err != nil {
 			return nil, err
 		}
+		go func() {
 
-		doc.Find(".col-xs-8").Each(func(i int, s *goquery.Selection) {
-			id := strings.TrimSpace(s.Find("h3").Text())
+			doc.Find(".col-xs-8").Each(func(i int, s *goquery.Selection) {
+				id := strings.TrimSpace(s.Find("h3").Text())
 
-			// TODO: maybe store webstie address in the database
-			// QLD council put email and website under the same div
-			// splitting out new line character, you can also get the website address via
-			// fitleredEmail[2]
-			email := strings.TrimSpace(s.Find(".email-content").Text())
-			filteredEmail := strings.SplitN(email, "\n", -1)
+				// TODO: maybe store webstie address in the database
+				// QLD council put email and website under the same div
+				// splitting out new line character, you can also get the website address via
+				// fitleredEmail[2]
+				email := strings.TrimSpace(s.Find(".email-content").Text())
+				filteredEmail := strings.SplitN(email, "\n", -1)
 
-			breeders = append(breeders, &Breeder{
-				Breed: breed.Name,
-				ID:    id,
-				Email: filteredEmail[0],
+				breeders = append(breeders, &Breeder{
+					Breed: breed.Name,
+					ID:    id,
+					Email: filteredEmail[0],
+				})
+
+				breed.Breeder = breeders
+
 			})
-
-			breed.Breeder = breeders
-
-		})
+			wg.Done()
+		}()
 
 	}
 
-	log.Println("breeders count ")
+	wg.Wait()
 
 	return breeds, nil
 }

@@ -31,27 +31,25 @@ type Result struct {
 	Breed []*Breed
 }
 
-// TODO: Search function for matcher interface should return Result not []Result
 type Matcher interface {
-	Search(feed *Feed) ([]*Result, error)
+	Search(feed *Feed) (*Result, error)
 }
 
-func Match(matcher Matcher, feed *Feed, results chan<- *Result) {
+func Match(matcher Matcher, feed *Feed) *Result {
 	matchResults, err := matcher.Search(feed)
 	if err != nil {
-		log.Println(err)
-		return
+		// log.Println(err)
+		return nil
 	}
 
-	for _, result := range matchResults {
-		results <- result
-	}
+	return matchResults
+
 }
 
 func Register(state string, matcher Matcher) {
 
 	if _, exist := matchers[state]; exist {
-		log.Fatalln(state, "Matcher already registered")
+		// log.Fatalln(state, "Matcher already registered")
 	}
 
 	matchers[state] = matcher
@@ -62,10 +60,8 @@ func Run() {
 	feeds, err := RetrieveFeed()
 
 	if err != nil {
-		log.Fatalln(err)
+		log.Println(err)
 	}
-
-	results := make(chan *Result)
 
 	var waitGroup sync.WaitGroup
 
@@ -79,26 +75,14 @@ func Run() {
 		}
 
 		go func(matcher Matcher, feed *Feed) {
-			Match(matcher, feed, results)
+			result := Match(matcher, feed)
+			if result != nil {
+				ProcessBreeder(result.Breed, result.State)
+			}
 			waitGroup.Done()
 		}(matcher, feed)
 	}
 
-	go func() {
-		waitGroup.Wait()
-		close(results)
-	}()
+	waitGroup.Wait()
 
-	Display(results)
-
-}
-
-func Display(results chan *Result) {
-	log.Println("......................!!")
-	log.Println(len(results))
-	for result := range results {
-		if result.Breed != nil {
-			ProcessBreeder(result.Breed)
-		}
-	}
 }

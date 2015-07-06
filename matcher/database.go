@@ -4,17 +4,20 @@ import (
 	"database/sql"
 	_ "github.com/go-sql-driver/mysql"
 	"log"
+	"os"
 	"time"
 )
-
-//check if email exist in the database..
 
 const (
 	timeLayout = "2015-01-18 00:01:54"
 )
 
-func ProcessBreeder(breeds []*Breed) {
-	db, err := sql.Open("mysql", "root:@/CodeDog")
+func ProcessBreeder(breeds []*Breed, state string) {
+	database := os.Getenv("CodeDogDatabase")
+	password := os.Getenv("CodeDogPass")
+	user := os.Getenv("CodeDogUser")
+	log.Println("User : " + user + ":" + password + "@/" + database)
+	db, err := sql.Open("mysql", user+":"+password+"@/"+database)
 
 	if err != nil {
 		log.Fatalln(err)
@@ -32,15 +35,9 @@ func ProcessBreeder(breeds []*Breed) {
 		err := db.QueryRow("Select id from Breed where name = ?", breed.Name).Scan(&breedID)
 
 		if err != nil {
+			log.SetPrefix("WARNING (NO BREED) ")
 			log.Printf("err : %s for breed : %s \n", err, breed.Name)
 		}
-
-		log.Printf("%s ===============> %d \n", breed.Name, breedID)
-
-		/*
-			TODO : <LOG> Breeds that don't exist in the system
-			If Breed don't exist in the system, then skip
-		*/
 
 		if breedID > 0 {
 			for _, breeder := range breed.Breeder {
@@ -52,15 +49,10 @@ func ProcessBreeder(breeds []*Breed) {
 				}
 
 				if breederCount == 0 {
-					/*
-						TODO : <LOG>Logging breeder that use the same email address on differnet membership.
-						Known issue:
-						Some Breeders Share Email address with each other.
-						I have found QLD Breeders use the same address for Dachshund breed
-						Maybe need to tack this in the log and email.
-					*/
 
 					if breeder.Email == "" {
+						log.SetPrefix("WARNING (no Email) ")
+						log.Println(breeder.ID + " has no email	")
 						continue
 					}
 
@@ -68,10 +60,14 @@ func ProcessBreeder(breeds []*Breed) {
 						breeder.Email, breeder.ID, "DogBreeder", time.Now().Format(time.RFC3339))
 
 					if err != nil {
+						log.SetPrefix("ERROR ")
 						log.Println(err)
 					}
 
 					row, _ := result.LastInsertId()
+
+					/* Insert Metadata  Only the State*/
+					db.Exec("INSERT INTO Metadata (user_id, state) VALUES (?,?)", row, state)
 
 					/*
 						Insert many to many relationship for Breed, User.
@@ -82,19 +78,18 @@ func ProcessBreeder(breeds []*Breed) {
 					_, err2 := db.Exec("INSERT INTO Breed_User (breed_id, user_id) VALUES( ?, ?)", breedID, row)
 
 					if err2 != nil {
-						log.Println(err2)
+						// log.Println(err2)
 					}
 
 					db.Exec("set foreign_key_checks=1")
 
 					breederTotalCount = breederTotalCount + 1
-					log.Printf("%s -- inserted %d \n", breeder.Email, row)
-
 				}
 			}
 		}
 	}
 
+	log.SetPrefix("INFO ")
 	log.Printf("totla %d \n", breederTotalCount)
 
 }
