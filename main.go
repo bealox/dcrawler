@@ -1,10 +1,11 @@
 package main
 
 import (
-	"github.com/bealox/dcrawler/matcher"
 	"log"
 	"os"
 	"time"
+
+	"github.com/bealox/dcrawler/matcher"
 )
 
 func main() {

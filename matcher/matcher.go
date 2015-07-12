@@ -49,7 +49,8 @@ func Match(matcher Matcher, feed *Feed) *Result {
 func Register(state string, matcher Matcher) {
 
 	if _, exist := matchers[state]; exist {
-		// log.Fatalln(state, "Matcher already registered")
+		log.SetPrefix("Error")
+		log.Fatalln(state, "Matcher already registered")
 	}
 
 	matchers[state] = matcher
